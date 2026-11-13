@@ -1,0 +1,53 @@
+{
+  "fetched_at": "2026-11-13T10:58:09.177725+00:00",
+  "files": [
+    {
+      "file": "Parakh.md",
+      "repo": "https://github.com/Ishani-Shree/Parakh",
+      "words": 1085,
+      "sha256": "98d2e1b6d6574b3fc98854526a0cd6a005751f3614586440d4f41435d908282c"
+    },
+    {
+      "file": "Watermark-signal.md",
+      "repo": "https://github.com/Ishani-Shree/Watermark-signal",
+      "words": 2960,
+      "sha256": "f4296c48f733c1461c7f572eef8fc27d4e331a29ecac927025d0402e0a67301a"
+    },
+    {
+      "file": "ShopZone.md",
+      "repo": "https://github.com/Ishani-Shree/ShopZone",
+      "words": 1680,
+      "sha256": "5ed39dabf4381fd4e96334d06fb6efc2af5ce341e9fe71177b0eb2a98760f439"
+    },
+    {
+      "file": "investment-scam-detector.md",
+      "repo": "https://github.com/Ishani-Shree/investment-scam-detector",
+      "words": 745,
+      "sha256": "76b02084749021c35f4e46351a6d1a29e7fa3a044989422f91b06046102ab0cf"
+    },
+    {
+      "file": "Energy_Aware_GPU.md",
+      "repo": "https://github.com/Ishani-Shree/Energy_Aware_GPU",
+      "words": 1508,
+      "sha256": "0efbf8c5aaff2179e679c34624b5706256bfaad92338d9c88179addf91d93378"
+    },
+    {
+      "file": "Reachinbox-scheduler.md",
+      "repo": "https://github.com/Ishani-Shree/Reachinbox-scheduler",
+      "words": 2573,
+      "sha256": "ca9df24cc38a12dcbec3acc7dc1ecfff95b03d3b8503c44b26db483f32fd7e9d"
+    },
+    {
+      "file": "Diabetes_Risk_Analyser.md",
+      "repo": "https://github.com/Ishani-Shree/Diabetes_Risk_Analyser",
+      "words": 725,
+      "sha256": "18b5bdf2c1ef7f93b4b4349f83c3cff5ebe8c98198365d103a9a53da93ce24af"
+    },
+    {
+      "file": "Underwater_Microplastic_Detection.md",
+      "repo": "https://github.com/Ishani-Shree/Underwater_Microplastic_Detection",
+      "words": 521,
+      "sha256": "8ff3904b656f605f05b99fcf10bacf043437f300420e0cbd88e8b75c76d213d7"
+    }
+  ]
+}
