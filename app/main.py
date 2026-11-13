@@ -16,6 +16,8 @@ from app.config import collection_name, get_settings
 from app.db import apply_schema, connect
 from app.embeddings import Embedder
 from app.ingest import ingest_corpus
+from app.answer import answer_question
+from app.llm import LLMError, build_llm
 from app.retrieval import Mode, retrieve
 
 
@@ -28,6 +30,12 @@ async def lifespan(app: FastAPI):
         from app.embeddings import SentenceTransformerEmbedder
 
         app.state.embedder = SentenceTransformerEmbedder(settings.embedding_model)
+    if getattr(app.state, "llm", None) is None:
+        try:
+            app.state.llm = build_llm(settings)
+        except LLMError as exc:  # server still starts; /ask will return 503
+            app.state.llm = None
+            app.state.llm_error = str(exc)
     with connect(settings.database_url) as conn:
         apply_schema(conn)
     yield
@@ -113,6 +121,51 @@ def search(
             )
             for h in hits
         ],
+    )
+
+
+class AskRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=1000)
+    k: int = Field(default=5, ge=1, le=20)
+    mode: Mode = "vector"
+    collection: str | None = None
+
+
+class SourceOut(BaseModel):
+    source_file: str
+    heading: str
+    chunk_id: int
+
+
+class AskResponse(BaseModel):
+    answer: str
+    sources: list[SourceOut]
+    abstained: bool
+    latency_ms: int
+    reason: str | None = None  # why it abstained (null when answered)
+    top_similarity: float
+
+
+@app.post("/ask", response_model=AskResponse)
+def ask(req: AskRequest, request: Request, embedder: Embedder = Depends(get_embedder), conn=Depends(get_conn)):
+    from fastapi import HTTPException
+
+    llm = request.app.state.llm
+    if llm is None:
+        raise HTTPException(status_code=503, detail=getattr(request.app.state, "llm_error", "no LLM configured"))
+    s = get_settings()
+    result = answer_question(
+        conn, embedder, llm, req.question,
+        collection=req.collection or default_collection(),
+        k=req.k, mode=req.mode, min_similarity=s.min_similarity,
+    )
+    return AskResponse(
+        answer=result.answer,
+        sources=[SourceOut(**src.__dict__) for src in result.sources],
+        abstained=result.abstained,
+        latency_ms=result.latency_ms,
+        reason=result.reason,
+        top_similarity=round(result.top_similarity, 4),
     )
 
 
