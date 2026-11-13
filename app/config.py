@@ -25,6 +25,7 @@ class Settings:
     gemini_model: str
     ollama_url: str
     ollama_model: str
+    ollama_num_ctx: int
 
 
 def get_settings() -> Settings:
@@ -41,6 +42,7 @@ def get_settings() -> Settings:
         gemini_model=env("GEMINI_MODEL", "gemini-2.5-flash"),
         ollama_url=env("OLLAMA_URL", ""),
         ollama_model=env("OLLAMA_MODEL", "qwen2.5:7b"),
+        ollama_num_ctx=int(env("OLLAMA_NUM_CTX", "16384")),
     )
 
 

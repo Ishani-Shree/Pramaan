@@ -1,0 +1,11 @@
+{
+  "run_at": "2026-11-13T15:51:35+00:00",
+  "llm": "ollama:qwen2.5:7b",
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "k": 5,
+  "min_similarity": 0.3,
+  "overlap": 50,
+  "ollama_num_ctx": 16384,
+  "questions": 30,
+  "machine": "Windows-10-10.0.26300-SP0"
+}

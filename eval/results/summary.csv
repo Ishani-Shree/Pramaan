@@ -1,0 +1,5 @@
+config,hit@5_%,hit@1_%,context_recall_%,correct_%,abstain_unans_%,wrong_unans_%,false_abstain_%,citation_fail,invalid_json,llm_errors,median_ms,p95_ms,n_answerable,n_unanswerable
+s300_o50_vector,100.0,100.0,100.0,80.0,100.0,0.0,0.0,0,0,0,6602,11086,25,5
+s300_o50_hybrid,100.0,100.0,100.0,88.0,100.0,0.0,0.0,0,0,0,8306,11532,25,5
+s800_o50_vector,100.0,100.0,100.0,96.0,100.0,0.0,0.0,0,0,0,10082,12379,25,5
+s800_o50_hybrid,100.0,96.0,100.0,96.0,100.0,0.0,0.0,0,0,0,10214,12645,25,5

@@ -52,13 +52,26 @@ class GeminiLLM:
 
 
 class OllamaLLM:
-    def __init__(self, url: str, model: str, timeout: float = 120.0):
+    # Ollama's default context window is small (2,048 tokens per request).
+    # A longer prompt is NOT rejected: Ollama silently drops its *beginning*,
+    # which is where the system prompt and rules are. We found this in the
+    # evaluation: 800-word chunks made ~6k-token prompts, the model never saw
+    # the instructions, and every answer came back in the wrong format.
+    def __init__(self, url: str, model: str, num_ctx: int = 16384, timeout: float = 180.0):
         self.url = url.rstrip("/")
         self.model = model
+        self.num_ctx = num_ctx
         self.timeout = timeout
         self.name = f"ollama:{model}"
 
     def generate(self, system: str, prompt: str) -> str:
+        # Fail loudly instead of letting Ollama truncate. ~3 characters per
+        # token is a deliberately pessimistic estimate (English is ~4).
+        estimated = (len(system) + len(prompt)) // 3
+        if estimated > self.num_ctx - 1024:  # leave room for the reply
+            raise LLMError(
+                f"{self.name}: prompt (~{estimated} tokens) too long for num_ctx={self.num_ctx}"
+            )
         try:
             resp = httpx.post(
                 f"{self.url}/api/chat",
@@ -70,7 +83,7 @@ class OllamaLLM:
                     ],
                     "format": "json",
                     "stream": False,
-                    "options": {"temperature": 0},
+                    "options": {"temperature": 0, "num_ctx": self.num_ctx},
                 },
                 timeout=self.timeout,
             )
@@ -109,5 +122,5 @@ def build_llm(settings) -> FallbackLLM:
     if settings.gemini_api_key:
         llms.append(GeminiLLM(settings.gemini_api_key, settings.gemini_model))
     if settings.ollama_url:
-        llms.append(OllamaLLM(settings.ollama_url, settings.ollama_model))
+        llms.append(OllamaLLM(settings.ollama_url, settings.ollama_model, settings.ollama_num_ctx))
     return FallbackLLM(llms)
