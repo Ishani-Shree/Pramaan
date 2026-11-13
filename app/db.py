@@ -20,4 +20,10 @@ def apply_schema(conn: psycopg.Connection) -> None:
 def connect(database_url: str) -> psycopg.Connection:
     conn = psycopg.connect(database_url)
     register_vector(conn)  # lets us pass numpy arrays as vector values
+    # Filtered ANN: with WHERE collection = ..., an HNSW scan may find its
+    # nearest candidates in *other* collections, filter them out, and return
+    # fewer than k rows. strict_order (pgvector >= 0.8) keeps scanning the
+    # index until k matching rows are found, still in exact distance order.
+    conn.execute("SET hnsw.iterative_scan = strict_order")
+    conn.commit()
     return conn

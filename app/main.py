@@ -12,10 +12,11 @@ from dataclasses import asdict
 from fastapi import Depends, FastAPI, Request
 from pydantic import BaseModel, Field
 
-from app.config import get_settings
+from app.config import collection_name, get_settings
 from app.db import apply_schema, connect
 from app.embeddings import Embedder
 from app.ingest import ingest_corpus
+from app.retrieval import Mode, retrieve
 
 
 @asynccontextmanager
@@ -62,6 +63,57 @@ class IngestResponse(BaseModel):
     skipped: int
     deleted: int
     duration_ms: int
+
+
+class SearchRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=1000)
+    k: int = Field(default=5, ge=1, le=50)
+    mode: Mode = "vector"
+    collection: str | None = None  # default: from CHUNK_SIZE / CHUNK_OVERLAP
+
+
+class SearchHit(BaseModel):
+    chunk_id: int
+    source_file: str
+    heading: str
+    similarity: float
+    score: float
+    ranks: dict[str, int]
+    text: str
+
+
+class SearchResponse(BaseModel):
+    collection: str
+    mode: Mode
+    results: list[SearchHit]
+
+
+def default_collection() -> str:
+    s = get_settings()
+    return collection_name(s.chunk_size, s.chunk_overlap)
+
+
+@app.post("/search", response_model=SearchResponse)
+def search(
+    req: SearchRequest,
+    embedder: Embedder = Depends(get_embedder),
+    conn=Depends(get_conn),
+) -> SearchResponse:
+    """Retrieval only, no LLM. Useful for debugging what /ask will see."""
+    collection = req.collection or default_collection()
+    hits = retrieve(conn, embedder, req.question, collection, req.k, req.mode)
+    return SearchResponse(
+        collection=collection,
+        mode=req.mode,
+        results=[
+            SearchHit(
+                chunk_id=h.id, source_file=h.source_file, heading=h.heading,
+                similarity=round(h.similarity, 4), score=round(h.score, 6),
+                ranks=h.ranks, text=h.text,
+            )
+            for h in hits
+        ],
+    )
 
 
 @app.get("/health")
