@@ -52,7 +52,14 @@ def ingest_chunks(
     chunks: list[Chunk],
     collection: str,
     source_files: list[str],
+    full_sync: bool = False,
 ) -> IngestReport:
+    """Insert new chunks and delete stale ones.
+
+    full_sync=False: only `source_files` are synced (their stale chunks go).
+    full_sync=True:  `chunks` is the whole collection; anything else in the
+                     collection is deleted, including files that were removed.
+    """
     start = time.perf_counter()
 
     # De-duplicate within this batch too (same hash twice -> keep the first).
@@ -88,17 +95,24 @@ def ingest_chunks(
                 )
                 inserted += cur.rowcount  # 0 if a concurrent ingest won the race
 
-            # Remove chunks of these files that are no longer produced
-            # (the README changed). Other files / collections are untouched.
-            cur.execute(
-                """
-                DELETE FROM chunks
-                WHERE collection = %s
-                  AND source_file = ANY(%s)
-                  AND NOT (content_hash = ANY(%s))
-                """,
-                (collection, source_files, hashes),
-            )
+            # Remove chunks this ingest no longer produces: a README changed,
+            # or (full sync) a file was removed from the corpus. Other
+            # collections are never touched.
+            if full_sync:
+                cur.execute(
+                    "DELETE FROM chunks WHERE collection = %s AND NOT (content_hash = ANY(%s))",
+                    (collection, hashes),
+                )
+            else:
+                cur.execute(
+                    """
+                    DELETE FROM chunks
+                    WHERE collection = %s
+                      AND source_file = ANY(%s)
+                      AND NOT (content_hash = ANY(%s))
+                    """,
+                    (collection, source_files, hashes),
+                )
             deleted = cur.rowcount
 
     return IngestReport(
@@ -119,7 +133,13 @@ def ingest_corpus(
     chunk_size: int,
     overlap: int,
 ) -> IngestReport:
+    """Sync one collection with the corpus folder (full sync: a README removed
+    from the folder is removed from the index too)."""
     docs = load_corpus(corpus_dir)
+    if not docs:
+        # A full sync with zero documents would delete the whole collection.
+        # An empty corpus is almost always a wrong path, so refuse instead.
+        raise ValueError(f"no documents found in corpus folder {corpus_dir!s}")
     chunks = chunk_corpus(docs, chunk_size, overlap)
     return ingest_chunks(
         conn,
@@ -127,6 +147,7 @@ def ingest_corpus(
         chunks,
         collection=collection_name(chunk_size, overlap),
         source_files=[d.source_file for d in docs],
+        full_sync=True,
     )
 
 

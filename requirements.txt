@@ -9,6 +9,7 @@ psycopg[binary]>=3.2
 pgvector>=0.3
 
 # Embeddings
+numpy>=1.26
 sentence-transformers>=3.0
 
 # LLM

@@ -9,7 +9,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.config import collection_name, get_settings
@@ -49,11 +49,12 @@ def get_embedder(request: Request) -> Embedder:
 
 
 def get_conn():
-    conn = connect(get_settings().database_url)
-    try:
+    # `with` commits when the request succeeds and rolls back if it raises.
+    # A bare conn.close() would silently roll back every write: POST /ingest
+    # reported "inserted" but stored nothing on a fresh database (caught by
+    # tests/test_api.py).
+    with connect(get_settings().database_url) as conn:
         yield conn
-    finally:
-        conn.close()
 
 
 class IngestRequest(BaseModel):
@@ -148,8 +149,6 @@ class AskResponse(BaseModel):
 
 @app.post("/ask", response_model=AskResponse)
 def ask(req: AskRequest, request: Request, embedder: Embedder = Depends(get_embedder), conn=Depends(get_conn)):
-    from fastapi import HTTPException
-
     llm = request.app.state.llm
     if llm is None:
         raise HTTPException(status_code=503, detail=getattr(request.app.state, "llm_error", "no LLM configured"))
@@ -185,8 +184,9 @@ def ingest(
     size = req.chunk_size or s.chunk_size
     overlap = s.chunk_overlap if req.overlap is None else req.overlap
     if overlap >= size:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=422, detail="overlap must be smaller than chunk_size")
-    report = ingest_corpus(conn, embedder, s.corpus_dir, size, overlap)
+    try:
+        report = ingest_corpus(conn, embedder, s.corpus_dir, size, overlap)
+    except ValueError as exc:  # e.g. empty corpus folder: refuse rather than wipe the index
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return IngestResponse(**asdict(report))
